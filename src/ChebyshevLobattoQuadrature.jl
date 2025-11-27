@@ -10,7 +10,7 @@ end
 """
     cheb_lobatto_nodes(n::Integer) -> Vector{Float64}
 
-Return the Chebyshev-Lobatto nodes ``x_k = cos(k*pi/n)`` for ``k = 0,...,n``.
+Return the Chebyshev–Lobatto nodes ``x_k = \\cos(k\\pi/n)`` for ``k = 0,\\ldots,n``.
 
 # Examples
 ```julia
@@ -36,36 +36,36 @@ end
 """
     cheb_lobatto_weights(n::Integer) -> Vector{Float64}
 
-Return the custom Chebyshev-Lobatto weights defined by
-
-``w_0 = w_n = 1/n^2`` and ``w_k = 2/n^2`` for odd ``k`` (with ``0 < k < n``),
-while even interior indices receive zero weight.
+Compute Chebyshev–Lobatto weights for integrals on ``[-1, 1]`` with respect to
+the standard Lebesgue measure. The weights solve the moment conditions
+``\\int_{-1}^{1} x^i\\,dx = \\sum_{k=0}^n w_k x_k^i`` for ``i = 0,\\ldots,n``.
 """
 @inline function cheb_lobatto_weights(n::Integer)
     N = _checked_order(n)
-    weights = zeros(Float64, N + 1)
-    scale = 1 / (N^2)
-    weights[1] = scale
-    weights[end] = scale
-    limit = N - 1
-    @inbounds for k in 1:limit
-        weights[k + 1] = isodd(k) ? 2 * scale : 0.0
+    nodes = cheb_lobatto_nodes(N)
+    A = Matrix{Float64}(undef, N + 1, N + 1)
+    @inbounds for i in 0:N
+        A[i + 1, :] = nodes .^ i
     end
-    return weights
+    b = Vector{Float64}(undef, N + 1)
+    @inbounds for i in 0:N
+        b[i + 1] = iseven(i) ? 2.0 / (i + 1) : 0.0
+    end
+    return A \ b
 end
 
 """
     cheb_lobatto_quadrature(f::Function, n::Integer) -> Float64
 
-Approximate ``int_{-1}^{1} f(x) dx`` via the Chebyshev-Lobatto nodes and the
-exercise weights:
+Approximate the integral of ``f`` on ``[-1, 1]`` using Chebyshev–Lobatto nodes
+and weights obtained from the moment conditions:
 
-``I approx sum_{k=0}^n w_k f(x_k)``.
+``I \\approx \\sum_{k=0}^n w_k f(x_k)``.
 
 # Examples
 ```julia
-julia> cheb_lobatto_quadrature(x -> x^2, 20)
-0.6666699999999999
+julia> cheb_lobatto_quadrature(x -> 1, 32)
+2.0
 ```
 """
 @inline function cheb_lobatto_quadrature(f::Function, n::Integer)
