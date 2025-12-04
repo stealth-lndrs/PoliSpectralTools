@@ -1,15 +1,15 @@
 name = "SpectralTools"
-uuid = "fca48333-7434-41b0-8f56-a17c12755e8d"
-authors = ["osval "]
-version = "0.1.0"
+uuid = "e5870fb4-0785-4c2b-93f1-21089c9623d1"
+authors = ["Course Staff <spectral@example.com>"]
+version = "0.2.0"
 
 [deps]
-Kronecker = "2c470bb0-bcc8-11e8-3dad-c9649493f05e"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+ToeplitzMatrices = "c751599d-da0a-543b-9d20-d0a503d91d24"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b50"
 
 [targets]
 test = ["Test"]

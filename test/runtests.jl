@@ -1,79 +1,68 @@
 using Test
-using LinearAlgebra
-using SparseArrays
 using SpectralTools
+using LinearAlgebra: norm
+using SpectralTools: Generic
+using SpectralTools.BVP
+using SpectralTools.PDE
+using SpectralTools.Collocation
 
-@testset "SpectralTools" begin
-    @testset "Chebyshev nodes" begin
-        x = cheb_lobatto_nodes(10)
-        @test length(x) == 11
-        @test isapprox(x[1], 1.0; atol=eps())
-        @test isapprox(x[end], -1.0; atol=eps())
-        @test all(diff(x) .< 0)
+@testset "Generic Utilities" begin
+    @testset "Barycentric interpolation" begin
+        x = collect(range(-1.0, 1.0; length = 5))
+        y = x .^ 3 .- 2x .+ 1
+        vals, P = Generic.Bary_Interp(x, y, [0.0, 0.5])
+        @test size(P) == (2, length(x))
+        @test vals[1] ≈ 1.0 atol = 1e-12
+        @test vals[2] ≈ (0.5^3 - 2*0.5 + 1) atol = 1e-12
     end
 
-    @testset "Differentiation matrices" begin
-        D, D2 = cheb_D_matrices(12)
-        x = cheb_lobatto_nodes(12)
-        f = x .^ 3
-        df = 3 .* x .^ 2
-        d2f = 6 .* x
-        @test maximum(abs.(D * f - df)) < 1e-10
-        @test maximum(abs.(D2 * f - d2f)) < 1e-10
+    @testset "Differentiation matrix" begin
+        grid = build_grid(6; basis = :chebyshev)
+        D = Generic.Generalized_Diff_Mat(grid.x)
+        ones_vec = ones(length(grid.x))
+        @test norm(D * ones_vec, Inf) < 1e-12
     end
+end
 
-    @testset "Laplacian operator" begin
-        _, D2x = cheb_D_matrices(5)
-        _, D2y = cheb_D_matrices(7)
-        A = laplacian_plus_I_operator(D2x, D2y)
-        nx = size(D2x, 1)
-        ny = size(D2y, 1)
-        @test size(A, 1) == nx * ny
-        @test size(A, 2) == nx * ny
-        @test issparse(A)
-        ix = 2
-        iy = 3
-        idx = ix + (iy - 1) * nx
-        @test isapprox(A[idx, idx], D2x[ix, ix] + D2y[iy, iy] + 1.0; atol=1e-10)
-    end
+@testset "BVP Solvers" begin
+    exact(x) = x^4
+    a(x) = one(x)
+    b(x) = zero(x)
+    c(x) = zero(x)
+    rhs(x) = 12x^2
+    bvp = solve_linear_bvp(a, b, c, rhs; N = 28,
+        bc = (left = (:dirichlet, exact(-1.0)), right = (:dirichlet, exact(1.0))))
+    @test maximum(abs.(bvp.u .- exact.(bvp.x))) < 1e-8
 
-    @testset "Dirichlet enforcement" begin
-        nx = 5
-        ny = 4
-        _, D2x = cheb_D_matrices(nx - 1)
-        _, D2y = cheb_D_matrices(ny - 1)
-        A = laplacian_plus_I_operator(D2x, D2y)
-        total = size(A, 1)
-        rhs = fill(3.0, total)
-        mask = falses(ny, nx)
-        mask[2:end-1, 2:end-1] .= true
-        boundary_values = fill(1.0, ny, nx)
-        Ared, bred, boundary_vec = apply_dirichlet!(A, rhs, mask, boundary_values)
-        nint = count(identity, mask)
-        @test size(Ared, 1) == nint
-        @test length(bred) == nint
-        @test length(boundary_vec) == total
-        sol = solve_poisson_like(Ared, bred)
-        full = rebuild_solution(sol, boundary_values, mask)
-        @test size(full) == size(boundary_values)
-        @test maximum(abs.(full[.!mask] .- 1.0)) < 1e-12
-    end
+    g(x, y, yp) = exp(y)
+    dgdy(x, y, yp) = exp(y)
+    sol = solve_nonlinear_bvp(g; dg_dy = dgdy, N = 40,
+        bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+    grid = sol.grid
+    residual = grid.D2 * sol.u - exp.(sol.u)
+    @test sol.converged
+    @test norm(residual, Inf) < 5e-7
+end
 
-    @testset "Interpolation" begin
-        x = cheb_lobatto_nodes(18)
-        f = sin.(x)
-        xnew = collect(range(-1, 1; length=25))
-        fint = barycentric_interp_1d(x, f, xnew)
-        @test maximum(abs.(fint .- sin.(xnew))) < 1e-8
+@testset "PDE Solvers" begin
+    u_exact(x, t) = exp(-π^2 * t / 4) * sin(π * (x + 1) / 2)
+    u0(x) = u_exact(x, 0.0)
+    diff_sol = solve_diffusion_1d(u0, (0.0, 0.02); N = 36, dt = 2e-5,
+        bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+    final_exact = u_exact.(diff_sol.x, diff_sol.t[end])
+    diff_err = maximum(abs.(diff_sol.u[:, end] .- final_exact))
+    @test diff_err < 5e-5
 
-        y = cheb_lobatto_nodes(12)
-        X, Y = grid2D(x, y)
-        F = sin.(X .+ Y)
-        xfine = collect(range(-1, 1; length=15))
-        yfine = collect(range(-1, 1; length=20))
-        Finterp = interp2D_spectral(x, y, F, xfine, yfine)
-        exact = sin.(repeat(reshape(xfine, 1, :), length(yfine), 1) .+
-                     repeat(reshape(yfine, :, 1), 1, length(xfine)))
-        @test maximum(abs.(Finterp .- exact)) < 5e-8
-    end
+    wave_exact(x, t) = cos(π * t / 2) * sin(π * (x + 1) / 2)
+    wave_sol = solve_wave_1d(x -> wave_exact(x, 0.0), x -> 0.0,
+        (0.0, 0.02); N = 36, dt = 3e-3,
+        bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+    wave_err = maximum(abs.(wave_sol.u[:, end] .- wave_exact.(wave_sol.x, wave_sol.t[end])))
+    @test wave_err < 1e-3
+
+    u2d(x, y) = sin(π * (x + 1) / 2) * sin(π * (y + 1) / 2)
+    forcing(x, y) = - (π^2 / 2) * u2d(x, y)
+    poisson = solve_poisson_2d(forcing; Nx = 18, Ny = 18)
+    U_exact = [u2d(x, y) for x in poisson.x, y in poisson.y]
+    @test maximum(abs.(poisson.u .- U_exact)) < 5e-4
 end

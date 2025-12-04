@@ -1,23 +1,27 @@
+
 module SpectralTools
 
-using LinearAlgebra
-using SparseArrays
-using Kronecker
-
-include("Utils.jl")
+include("Generic.jl")
 include("Chebyshev.jl")
-include("Operators2D.jl")
-include("Interpolation.jl")
+include("Legendre.jl")
+include("Fourier.jl")
+include("BoundaryConditions.jl")
+include("Collocation.jl")
+include("BVP.jl")
+include("PDE.jl")
 
-export cheb_lobatto_nodes,
-       cheb_D_matrices,
-       grid2D,
-       laplacian_plus_I_operator,
-       apply_dirichlet!,
-       solve_poisson_like,
-       rebuild_solution,
-       barycentric_interp_1d,
-       interp2D_spectral,
-       unvec
+using .Generic
+using .Chebyshev
+using .Legendre
+using .Fourier
+using .BoundaryConditions
+using .Collocation
+using .BVP
+using .PDE
+
+export Generic, Chebyshev, Legendre, Fourier,
+       BoundaryConditions, Collocation,
+       solve_linear_bvp, solve_nonlinear_bvp,
+        solve_diffusion_1d, solve_wave_1d, solve_poisson_2d
 
 end
