@@ -163,6 +163,23 @@ resumo no PR.
 - Manter docstrings e exemplos curtos para funções públicas.
 - Buscar estabilidade de tipos e reutilizar utilidades existentes.
 
+## 9. Documentação para Usuários
+
+- Consulte `docs/USER_GUIDE.md` para instruções detalhadas de instalação, API e progresso de exemplos/testes.
+- A versão web em `docs/web/index.html` (publicável via GitHub Pages) mostra um resumo interativo com figuras.
+
+## 10. Relatório Completo de Testes + Cobertura
+
+Execute o script abaixo para gerar um relatório consolidado (status dos testsets,
+falhas detalhadas e cobertura de código). Recomendado rodar com cobertura ativada:
+
+```bash
+julia --project --code-coverage=user scripts/run_full_report.jl
+```
+
+O relatório indicará quais testsets passaram, quais falharam e exibirá um resumo
+de cobertura por arquivo (requer que `.cov` sejam gerados via `--code-coverage`).
+
 ---
 
 ## 8. Entregáveis

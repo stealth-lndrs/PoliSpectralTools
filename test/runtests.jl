@@ -1,6 +1,6 @@
 using Test
 using SpectralTools
-using LinearAlgebra: norm
+using LinearAlgebra: norm, Diagonal, dot
 using SpectralTools: Generic
 using SpectralTools.BVP
 using SpectralTools.PDE
@@ -65,4 +65,94 @@ end
     poisson = solve_poisson_2d(forcing; Nx = 18, Ny = 18)
     U_exact = [u2d(x, y) for x in poisson.x, y in poisson.y]
     @test maximum(abs.(poisson.u .- U_exact)) < 5e-4
+end
+
+@testset "Usage-driven Tests" begin
+    @testset "Chebyshev BVP residual" begin
+        a(x) = -(1 + x)
+        b(x) = zero(x)
+        c(x) = zero(x)
+        rhs(x) = sinpi(x)
+        sol = solve_linear_bvp(a, b, c, rhs; N = 48,
+            basis = :chebyshev,
+            domain = (-1.0, 1.0),
+            bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+        grid = sol.grid
+        operator = Diagonal(a.(grid.x)) * grid.D2
+        residual = operator * sol.u .- rhs.(grid.x)
+        @test maximum(abs.(residual[2:end-1])) < 1e-9
+        @test abs(sol.u[1]) < 1e-12 && abs(sol.u[end]) < 1e-12
+    end
+
+    @testset "Legendre grid properties" begin
+        grid = build_grid(18; basis = :legendre)
+        sym_err = maximum(abs.(grid.x .+ reverse(grid.x)))
+        @test sym_err < 1e-13
+        ones_vec = ones(length(grid.x))
+        @test norm(grid.D1 * ones_vec, Inf) < 1e-12
+    end
+
+    @testset "Nonlinear BVP convergence" begin
+        g(x, y, yp) = sin(y)
+        dgdy(x, y, yp) = cos(y)
+        dg_dyp(x, y, yp) = zero(x)
+        sol = solve_nonlinear_bvp(g;
+            dg_dy = dgdy,
+            dg_dyp = dg_dyp,
+            N = 48,
+            basis = :chebyshev,
+            bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)),
+            maxiter = 15,
+            tol = 1e-10)
+        grid = sol.grid
+        residual = grid.D2 * sol.u .- sin.(sol.u)
+        @test sol.converged
+        @test sol.iterations <= 8
+        @test norm(residual, Inf) < 1e-8
+    end
+
+    @testset "Diffusion analytic comparison" begin
+        u_exact(x, t) = exp(-π^2 * t / 4) * sin(π * (x + 1) / 2)
+        u0(x) = u_exact(x, 0.0)
+        tspan = (0.0, 0.05)
+        sol_coarse = solve_diffusion_1d(u0, tspan;
+            diffusivity = 1.0,
+            N = 40,
+            dt = 1e-5,
+            bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+        exact_final = u_exact.(sol_coarse.x, sol_coarse.t[end])
+        err_coarse = maximum(abs.(sol_coarse.u[:, end] .- exact_final))
+        @test err_coarse < 5e-5
+
+        sol_fine = solve_diffusion_1d(u0, tspan;
+            diffusivity = 1.0,
+            N = 40,
+            dt = 5e-6,
+            bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))
+        exact_final_fine = u_exact.(sol_fine.x, sol_fine.t[end])
+        err_fine = maximum(abs.(sol_fine.u[:, end] .- exact_final_fine))
+        ratio = err_coarse / err_fine
+        @test ratio > 1.05
+    end
+
+    @testset "Wave energy mixed BCs" begin
+        c = 1.0
+        u0(x) = sin(π * (x + 1) / 2)
+        v0(x) = zero(x)
+        flux(t) = cos(5t)
+        bc = (left = (:neumann, (x, t) -> flux(t)), right = (:dirichlet, 0.0))
+        sol = solve_wave_1d(u0, v0, (0.0, 0.2);
+            N = 40, dt = 5e-4, c = c, bc = bc)
+        grid = build_grid(40; basis = :chebyshev)
+        energy(u_slice, v_half) = begin
+            grad = grid.D1 * u_slice
+            return 0.5 * (norm(v_half)^2 + c^2 * norm(grad)^2)
+        end
+        E0 = energy(sol.u[:, 1], sol.v[:, 1])
+        Eend = energy(sol.u[:, end], sol.v[:, end])
+        drift = abs(Eend - E0) / E0
+        @test drift <= 0.2
+        left_flux = dot(view(grid.D1, 1, :), sol.u[:, end])
+        @test isapprox(left_flux, flux(sol.t[end]); atol = 5e-3)
+    end
 end
