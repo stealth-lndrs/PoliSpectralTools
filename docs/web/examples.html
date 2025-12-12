@@ -2,125 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>PoliSpectralTools – Detailed Examples</title>
-    <style>
-      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; line-height: 1.6; background: #f8fafc; color: #0f172a; }
-      main { max-width: 900px; margin: 0 auto; padding: 2rem; background: #fff; }
-      h1, h2, h3 { color: #0f172a; }
-      section { margin-bottom: 2.5rem; }
-      code, pre { background: #0f172a; color: #f8fafc; padding: 0.75rem; display: block; border-radius: 6px; overflow-x: auto; }
-      img { max-width: 100%; border-radius: 8px; margin: 0.75rem 0; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.2); }
-      table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-      th, td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
-      th { background: #f1f5f9; }
-      .meta { font-size: 0.95rem; color: #475569; }
-    </style>
+    <title>PoliSpectralTools – Example Gallery</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main>
-      <h1>PoliSpectralTools – Usage Examples</h1>
-      <p class="meta">
-        Expanded descriptions for the five showcase cases (slides referenced from <code>class_slides/</code>).
-      </p>
+      <div class="hero">
+        <h1>Example Gallery</h1>
+        <p>Visual summaries of the implemented showcase problems. For derivations, see <a href="../USAGE_EXAMPLES.md">USAGE_EXAMPLES.md</a>.</p>
+      </div>
 
-      <section id="example1">
-        <h2>1. Chebyshev Linear BVP</h2>
-        <p><strong>Slides:</strong> PE_Aula_05_N.pdf (pp. 2–5)</p>
-        <p>
-          Solve <code>-(1+x) y'' = sin(πx)</code> with homogeneous Dirichlet data using Chebyshev
-          Lobatto collocation. We scale the second derivative matrix and impose BCs via the boundary utilities.
-        </p>
-        <pre><code>a(x) = -(1 + x)
-b(x) = 0; c(x) = 0; rhs(x) = sinpi(x)
-sol = solve_linear_bvp(a, b, c, rhs; N = 48, basis = :chebyshev)</code></pre>
-        <img src="../assets/bvp_linear_solution.png" alt="Chebyshev solution" />
-        <p class="meta">
-          Max norm difference versus an N=192 Chebyshev reference: <code>9.8e-14</code>.
-        </p>
-      </section>
-
-      <section id="example2">
-        <h2>2. Diffusion Decay</h2>
-        <p><strong>Slides:</strong> PE_Aula_06_N.pdf (pp. 2–3)</p>
-        <p>
-          Heat equation with analytic solution <code>exp(-π² t / 4) sin(π(x+1)/2)</code> solved via MOL + RK4
-          (N=48 Chebyshev nodes, dt=1e-5).
-        </p>
-        <pre><code>diff = solve_diffusion_1d(u_exact(_, 0.0), (0.0, 0.05);
-    N = 48, dt = 1e-5, bc = (left = (:dirichlet, 0.0), right = (:dirichlet, 0.0)))</code></pre>
-        <img src="../assets/diffusion_decay.png" alt="Diffusion decay" />
-        <img src="../assets/diffusion_decay.gif" alt="Diffusion decay animation" />
-        <p class="meta">
-          Error at t = 0.05: <code>3.3e-15</code> (L∞ norm).
-        </p>
-      </section>
-
-      <section id="example3">
-        <h2>3. Legendre vs. Chebyshev</h2>
-        <p><strong>Slides:</strong> PE_Aula_07_N.pdf, PE_Aula_08_N.pdf</p>
-        <p>
-          Repeat the variable-diffusivity BVP on Legendre Lobatto nodes and compare with Chebyshev references via barycentric interpolation.
-        </p>
-        <pre><code>leg = solve_linear_bvp(...; basis = :legendre, N = 40)
-cheb = solve_linear_bvp(...; basis = :chebyshev, N = 96)
-vals, _ = Generic.Bary_Interp(cheb.x, cheb.u, leg.x)</code></pre>
-        <img src="../assets/bvp_legendre_error.png" alt="Legendre error plot" />
-        <table>
-          <thead>
-            <tr><th>N (Legendre)</th><th>max |u_leg − u_cheb|</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>12</td><td>6.09×10⁻¹⁰</td></tr>
-            <tr><td>20</td><td>1.29×10⁻¹⁴</td></tr>
-            <tr><td>28</td><td>1.41×10⁻¹⁴</td></tr>
-            <tr><td>36</td><td>1.92×10⁻¹⁴</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="example4">
-        <h2>4. Nonlinear BVP (y'' = sin y)</h2>
-        <p><strong>Slides:</strong> PE_Aula_06_N.pdf (Newton flow)</p>
-        <p>
-          Newton iteration with analytic Jacobian on Chebyshev nodes (N=80). Starting from zero, the solver converges in a single iteration.
-        </p>
-        <pre><code>g(x,y,yp) = sin(y)
-sol = solve_nonlinear_bvp(g; dg_dy = (x,y,yp)->cos(y), N = 80)</code></pre>
-        <img src="../assets/bvp_nonlinear_solution.png" alt="Nonlinear BVP solution" />
-        <p class="meta">
-          Residual norm <code>&lt; 1e-13</code>, iterations: 1.
-        </p>
-      </section>
-
-      <section id="example5">
-        <h2>5. Wave Equation with Mixed BCs</h2>
-        <p><strong>Slides:</strong> PE_Aula_10_N.pdf</p>
-        <p>
-          Leapfrog integration on Chebyshev nodes (N=40, dt=5e-4), Neumann flux on the left boundary and Dirichlet clamp on the right. Energy drift reflects work injected by the Neumann boundary.
-        </p>
-        <pre><code>bc = (left = (:neumann, (x,t)->cos(5t)), right = (:dirichlet, 0.0))
-wave = solve_wave_1d(u0, v0, (0.0, 0.2); N = 40, dt = 5e-4, bc = bc)</code></pre>
-        <img src="../assets/wave_mode.png" alt="Wave snapshot" />
-        <img src="../assets/wave_mode.gif" alt="Wave animation" />
-        <p class="meta">
-          Energy drift over t∈[0,0.2]: 17.9%; boundary flux error &lt; 5×10⁻³.
-        </p>
+      <section>
+        <h2>Implemented Scenarios</h2>
+        <div class="card-grid">
+          <div class="card">
+            <h3>Chebyshev Linear BVP</h3>
+            <p>Variable diffusivity with Dirichlet walls. Residuals and reference comparison highlight spectral accuracy.</p>
+            <img src="../assets/bvp_linear_solution.png" alt="Chebyshev BVP" />
+          </div>
+          <div class="card">
+            <h3>Diffusion Decay</h3>
+            <p>Heat equation solved by MOL + RK4. Animation showcases exponential decay.</p>
+            <img src="../assets/diffusion_decay.gif" alt="Diffusion gif" />
+          </div>
+          <div class="card">
+            <h3>Legendre Accuracy</h3>
+            <p>Legendre vs Chebyshev comparison using barycentric interpolation and log–log error curves.</p>
+            <img src="../assets/bvp_legendre_error.png" alt="Legendre error" />
+          </div>
+          <div class="card">
+            <h3>Nonlinear BVP</h3>
+            <p>Newton iteration for <code>y'' = sin(y)</code> converging in one step thanks to analytic derivatives.</p>
+            <img src="../assets/bvp_nonlinear_solution.png" alt="Nonlinear solution" />
+          </div>
+          <div class="card">
+            <h3>Wave Mixed BCs</h3>
+            <p>Leapfrog integration with Neumann/Dirichlet boundaries; observe energy drift from boundary work.</p>
+            <img src="../assets/wave_mode.gif" alt="Wave gif" />
+          </div>
+        </div>
       </section>
 
       <section>
-        <h2>File Map</h2>
-        <table>
-          <thead>
-            <tr><th>Example</th><th>Script</th><th>Assets</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>examples/bvp_linear.jl</td><td>bvp_linear_solution.png</td></tr>
-            <tr><td>2</td><td>examples/diffusion.jl</td><td>diffusion_decay.png / .gif</td></tr>
-            <tr><td>3</td><td>examples/bvp_legendre.jl</td><td>bvp_legendre_error.png</td></tr>
-            <tr><td>4</td><td>examples/bvp_nonlinear.jl</td><td>bvp_nonlinear_solution.png</td></tr>
-            <tr><td>5</td><td>examples/wave_mixed_bc.jl</td><td>wave_mode.png / .gif</td></tr>
-          </tbody>
-        </table>
+        <h2>What’s Next?</h2>
+        <blockquote>
+          See <a href="../IMPLEMENTATION_STATUS.md">Implementation Status</a> for detailed instructions on Examples 6–10 and the remaining Julia tests.
+        </blockquote>
       </section>
     </main>
   </body>
