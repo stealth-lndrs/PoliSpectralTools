@@ -12,9 +12,9 @@ from the scripts under `examples/`.  The accompanying figures/GIFs live in
 ## 1. Chebyshev Linear BVP (Variable Diffusivity)
 
 - **Problem statement** (PE_Aula_05_N.pdf, pp. 2–5): Solve
-  \[
+  $$
   -(1+x)\, y''(x) = \sin(\pi x), \qquad x \in [-1, 1], \quad y(-1)=y(1)=0.
-  \]
+  $$
   After relocating to Chebyshev–Lobatto nodes, this becomes a weighted Poisson
   equation with non-constant diffusion.
 - **Analytical reference**: Because the coefficient vanishes at \(x=-1\), closed
@@ -42,9 +42,9 @@ from the scripts under `examples/`.  The accompanying figures/GIFs live in
 ## 2. Diffusion Decay with Dirichlet Walls
 
 - **Problem statement** (PE_Aula_06_N.pdf, pp. 2–3): 1D heat equation
-  \[
+  $$
   u_t = u_{xx}, \quad x\in[-1,1],\quad t\in[0,0.05],
-  \]
+  $$
   with \(u(x,0)=\sin\big(\tfrac{\pi(x+1)}{2}\big)\) and \(u(\pm1,t)=0\).
   Analytic solution: \(u(x,t)=\exp(-\pi^2 t /4)\sin(\pi(x+1)/2)\).
 - **Method**: Method of lines on Chebyshev Lobatto nodes (N = 48), scaled \(D_2\),
@@ -120,9 +120,9 @@ The error plateau for \(N\ge 20\) comes from machine precision rather than the b
 ## 5. Wave Propagation with Mixed Boundary Conditions
 
 - **Problem statement** (PE_Aula_10_N.pdf, pp. 2–3): 1D wave equation,
-  \[
+  $$
   u_{tt} = u_{xx}, \quad x \in [-1,1],
-  \]
+  $$
   with Neumann flux \(u_x(-1,t)=\cos(5t)\) and Dirichlet clamp \(u(1,t)=0\);
   initial displacement is the first sine mode, velocity is zero.
 - **Method**:
